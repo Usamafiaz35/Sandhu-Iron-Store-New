@@ -1,10 +1,105 @@
-from fastapi import FastAPI, HTTPException
+import os
+from dotenv import load_dotenv
+import jwt
+
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from Database.queries import *
 from Database.schema import *
+
+from datetime import datetime, timedelta
+from werkzeug.security import check_password_hash
+from Database.db import get_db_connection
+from psycopg2.extras import RealDictCursor
+
 
 app = FastAPI(title="Sindhu Iron Store API",
              description="Iron Store Management System",
              version="1.0")
+
+# Security
+security = HTTPBearer()
+
+# Load environment variables
+load_dotenv()
+
+# ==================== JWT CONFIGURATION ====================
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS"))
+
+# Check if values exist
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY not found in .env file")
+if not ALGORITHM:
+    raise ValueError("ALGORITHM not found in .env file")
+
+# ==================== LOGIN ENDPOINTS ====================
+
+@app.post("/login", response_model=LoginResponse)
+def login(request: LoginRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = %s",
+            (request.username,)
+        )
+        user = cursor.fetchone()
+        
+        if not user or not check_password_hash(user['password_hash'], request.password):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        # Use expiry from .env
+        token_data = {
+            "user_id": user['id'],
+            "username": user['username'],
+            "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)
+        }
+        token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+        
+        return LoginResponse(
+            success=True,
+            token=token,
+            user={
+                "id": user['id'],
+                "username": user['username']
+            },
+            message="Login successful"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/logout")
+def logout():
+    """User logout endpoint"""
+    return {
+        "success": True,
+        "message": "Logout successful"
+    }
+
+@app.get("/verify-token")
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify if token is valid"""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return {
+            "success": True,
+            "valid": True,
+            "user": payload
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # ==================== CUSTOMERS ENDPOINTS ====================
 

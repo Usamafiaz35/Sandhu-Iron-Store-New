@@ -1,0 +1,117 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Virtual Environment
+venv/
+venv/bin/
+venv/include/
+venv/lib/
+venv/lib64/
+venv/pyvenv.cfg
+venv/Scripts/
+venv/share/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.user
+*.sln
+*.dbmdl
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.pgsql
+*.mysql
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# JWT / Secret keys
+*.key
+*.pem
+*.crt
+secrets/
+config/secrets/
+
+# Backups
+*.bak
+*.backup
+*.old
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Project specific
+Frontend/node_modules/
+Frontend/.next/
+Frontend/out/
+Frontend/build/
+
+# Uploads / Media
+uploads/
+media/
+static/uploads/
+static/media/
+
+# Reports
+*.pdf
+*.xlsx
+*.csv
+!requirements.csv
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# VS Code specific
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+*.code-workspace

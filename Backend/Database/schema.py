@@ -1,6 +1,16 @@
 from pydantic import BaseModel
 from typing import Optional
 
+# Login Schemas
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginResponse(BaseModel):
+    success: bool
+    token: str
+    user: dict
+    message: str
 
 # Request Models (Pydantic)
 class CustomerCreate(BaseModel):

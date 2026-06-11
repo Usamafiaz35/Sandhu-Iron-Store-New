@@ -3,5 +3,5 @@ uvicorn
 psycopg2-binary
 python-dotenv
 pydantic
-psycopg2
 werkzeug
+PyJWT

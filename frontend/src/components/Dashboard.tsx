@@ -605,7 +605,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                       <th>Reference Name</th>
                       <th style={{ textAlign: 'right' }}>Total Purchases</th>
                       <th style={{ textAlign: 'right' }}>Total Paid</th>
-                      <th style={{ textAlign: 'right' }}>Balance</th>
+                      <th style={{ textAlign: 'right' }}>Remaining Balance</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -616,7 +616,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                         <td>{c.reference_name || <span style={{ color: 'var(--text-muted)' }}>-</span>}</td>
                         <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatRs(c.total_purchases || 0)}</td>
                         <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--success)' }}>{formatRs(c.total_paid || 0)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }} className={(c.balance || 0) > 0 ? 'text-danger' : ''}>
+                        <td style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }} className="text-danger">
                           {formatRs(c.balance || 0)}
                         </td>
                       </tr>

@@ -980,37 +980,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                         <tr>
                           <th>Date</th>
                           <th>Description</th>
+                          <th>Note</th>
                           <th style={{ textAlign: 'right' }}>Total</th>
                           <th style={{ textAlign: 'right' }}>Paid</th>
+                          <th style={{ textAlign: 'right' }}>Remaining</th>
                           <th></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {customerLedger.map(item => (
-                          <tr key={item.id}>
-                            <td>{formatDate(item.purchase_date)}</td>
-                            <td>
-                              <div style={{ fontWeight: 600 }}>{item.purchase_item}</div>
-                              {item.additional_note && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.additional_note}</div>}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                              {item.total_amount > 0 ? formatRs(item.total_amount) : '-'}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--success)' }}>
-                              {item.paid_amount > 0 ? formatRs(item.paid_amount) : '-'}
-                            </td>
-                            <td>
-                              <button 
-                                onClick={() => handleDeleteLedgerEntry(item.id)}
-                                className="password-toggle"
-                                style={{ position: 'relative', right: 0, top: 0, transform: 'none' }}
-                                title="Delete Entry"
-                              >
-                                <Trash2 size={14} className="text-danger" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {customerLedger.map(item => {
+                          const remaining = item.total_amount - item.paid_amount;
+                          return (
+                            <tr key={item.id}>
+                              <td>{formatDate(item.purchase_date)}</td>
+                              <td style={{ fontWeight: 600 }}>{item.purchase_item}</td>
+                              <td style={{ color: item.additional_note ? 'inherit' : 'var(--text-muted)' }}>
+                                {item.additional_note || '-'}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                {item.total_amount > 0 ? formatRs(item.total_amount) : '-'}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--success)' }}>
+                                {item.paid_amount > 0 ? formatRs(item.paid_amount) : '-'}
+                              </td>
+                              <td style={{ 
+                                textAlign: 'right', 
+                                fontFamily: 'monospace', 
+                                fontWeight: 600,
+                                color: remaining > 0 ? 'var(--error)' : 'var(--success)' 
+                              }}>
+                                {formatRs(remaining)}
+                              </td>
+                              <td>
+                                <button 
+                                  onClick={() => handleDeleteLedgerEntry(item.id)}
+                                  className="password-toggle"
+                                  style={{ position: 'relative', right: 0, top: 0, transform: 'none' }}
+                                  title="Delete Entry"
+                                >
+                                  <Trash2 size={14} className="text-danger" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

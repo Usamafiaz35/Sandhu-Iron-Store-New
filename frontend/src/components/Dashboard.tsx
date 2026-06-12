@@ -10,7 +10,8 @@ import {
   Trash2, 
   ArrowUpRight, 
   ArrowDownLeft, 
-  UserPlus
+  UserPlus,
+  PlusCircle
 } from 'lucide-react';
 
 
@@ -53,7 +54,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
-  const [currentTab, setCurrentTab] = useState<'overview' | 'customers'>('overview');
+  const [currentTab, setCurrentTab] = useState<'overview' | 'customers' | 'transaction'>('overview');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerLedger, setCustomerLedger] = useState<Transaction[]>([]);
+  const [isAddEntryOpen, setIsAddEntryOpen] = useState(false);
   
   // Form States
   const [newCustomerName, setNewCustomerName] = useState('');
@@ -75,6 +77,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [ledgerPaidAmount, setLedgerPaidAmount] = useState('');
   const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
   const [ledgerNote, setLedgerNote] = useState('');
+  
+  // New Transaction Form States
+  const [txCustomerId, setTxCustomerId] = useState('');
+  const [txType, setTxType] = useState<'purchase' | 'payment'>('purchase');
+  const [txItem, setTxItem] = useState('');
+  const [txTotalAmount, setTxTotalAmount] = useState('');
+  const [txPaidAmount, setTxPaidAmount] = useState('');
+  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+  const [txNote, setTxNote] = useState('');
+  const [txSuccessMsg, setTxSuccessMsg] = useState<string | null>(null);
+  const [txErrorMsg, setTxErrorMsg] = useState<string | null>(null);
   
   // Loading & Error States
   const [isLoading, setIsLoading] = useState(true);
@@ -231,6 +244,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         setLedgerPaidAmount('');
         setLedgerNote('');
         
+        setIsAddEntryOpen(false); // Close the entry sub-modal
+        
         // Refresh Ledger history and Summary info
         await handleOpenLedger(selectedCustomer);
         await loadData();
@@ -239,6 +254,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       }
     } catch (err) {
       alert('Error submitting ledger transaction.');
+    } finally {
+      setIsModalSubmitting(false);
+    }
+  };
+
+  // Handle standalone transaction submission
+  const handleNewTransactionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!txCustomerId || !txItem) return;
+
+    setIsModalSubmitting(true);
+    setTxSuccessMsg(null);
+    setTxErrorMsg(null);
+
+    // Format amounts
+    const totalAmount = txType === 'purchase' ? parseFloat(txTotalAmount || '0') : 0;
+    const paidAmount = txType === 'payment'
+      ? parseFloat(txPaidAmount || '0')
+      : parseFloat(txPaidAmount || '0'); // Allow cash downpayment on purchase
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ledger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          customer_id: parseInt(txCustomerId, 10),
+          purchase_item: txItem,
+          total_amount: totalAmount,
+          purchase_date: txDate,
+          additional_note: txNote || null,
+          paid_amount: paidAmount
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Clear inputs, keep type and date as convenience
+        setTxCustomerId('');
+        setTxItem(txType === 'payment' ? 'Cash Received' : '');
+        setTxTotalAmount('');
+        setTxPaidAmount('');
+        setTxNote('');
+        setTxSuccessMsg('Transaction recorded successfully!');
+        
+        // Refresh global dashboard data
+        await loadData();
+      } else {
+        setTxErrorMsg(data.message || 'Failed to submit transaction');
+      }
+    } catch (err) {
+      setTxErrorMsg('Error submitting transaction.');
     } finally {
       setIsModalSubmitting(false);
     }
@@ -348,17 +418,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         <div className="tabs-container">
           <button 
             className={`tab-btn ${currentTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setCurrentTab('overview')}
+            onClick={() => { setCurrentTab('overview'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
           >
             <LayoutDashboard size={16} />
             Overview
           </button>
           <button 
             className={`tab-btn ${currentTab === 'customers' ? 'active' : ''}`}
-            onClick={() => setCurrentTab('customers')}
+            onClick={() => { setCurrentTab('customers'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
           >
             <Users size={16} />
             Customers
+          </button>
+          <button 
+            className={`tab-btn ${currentTab === 'transaction' ? 'active' : ''}`}
+            onClick={() => { setCurrentTab('transaction'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
+          >
+            <PlusCircle size={16} />
+            New Transaction
           </button>
         </div>
 
@@ -550,6 +627,188 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             )}
           </div>
         )}
+
+        {/* -------------------- NEW TRANSACTION TAB -------------------- */}
+        {currentTab === 'transaction' && (
+          <div className="panel-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h3 className="panel-title">
+              <PlusCircle size={18} className="text-primary" />
+              Record New Transaction
+            </h3>
+
+            {txSuccessMsg && (
+              <div className="alert alert-success">
+                <span>{txSuccessMsg}</span>
+              </div>
+            )}
+
+            {txErrorMsg && (
+              <div className="alert alert-error">
+                <span>{txErrorMsg}</span>
+              </div>
+            )}
+
+            {/* Form type toggler */}
+            <div style={{ display: 'flex', gap: '4px', padding: '3px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', marginBottom: '20px' }}>
+              <button
+                type="button"
+                style={{ flex: 1, padding: '8px 12px', fontSize: '14px', justifyContent: 'center', margin: 0 }}
+                onClick={() => { setTxType('purchase'); setTxItem(''); setTxSuccessMsg(null); setTxErrorMsg(null); }}
+                className={txType === 'purchase' ? 'tab-btn active' : 'tab-btn'}
+              >
+                Sale (Iron/Sariya)
+              </button>
+              <button
+                type="button"
+                style={{ flex: 1, padding: '8px 12px', fontSize: '14px', justifyContent: 'center', margin: 0 }}
+                onClick={() => { setTxType('payment'); setTxItem('Cash Received'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
+                className={txType === 'payment' ? 'tab-btn active' : 'tab-btn'}
+              >
+                Receive Cash
+              </button>
+            </div>
+
+            <form onSubmit={handleNewTransactionSubmit}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="txCustomerSelect">Select Customer *</label>
+                <select
+                  id="txCustomerSelect"
+                  className="form-input"
+                  style={{ paddingLeft: '16px' }}
+                  value={txCustomerId}
+                  onChange={(e) => setTxCustomerId(e.target.value)}
+                  required
+                  disabled={isModalSubmitting}
+                >
+                  <option value="">-- Select a Customer --</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.customer_name} {c.phone_number ? `(${c.phone_number})` : ''} {c.balance !== undefined && c.balance !== 0 ? `| Bal: ${formatRs(c.balance)}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="txItemVal">
+                  {txType === 'purchase' ? 'Item / Description *' : 'Payment Mode *'}
+                </label>
+                <input
+                  id="txItemVal"
+                  type="text"
+                  className="form-input"
+                  style={{ paddingLeft: '16px' }}
+                  placeholder={txType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
+                  value={txItem}
+                  onChange={(e) => setTxItem(e.target.value)}
+                  required
+                  disabled={isModalSubmitting}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="txDateVal">Transaction Date *</label>
+                <input
+                  id="txDateVal"
+                  type="date"
+                  className="form-input"
+                  style={{ paddingLeft: '16px' }}
+                  value={txDate}
+                  onChange={(e) => setTxDate(e.target.value)}
+                  required
+                  disabled={isModalSubmitting}
+                />
+              </div>
+
+              {txType === 'purchase' ? (
+                <>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="txTotal">Invoice Amount (Rs.) *</label>
+                    <input
+                      id="txTotal"
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      style={{ paddingLeft: '16px' }}
+                      placeholder="0.00"
+                      value={txTotalAmount}
+                      onChange={(e) => setTxTotalAmount(e.target.value)}
+                      required
+                      disabled={isModalSubmitting}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="txPaid">Advance Paid (Optional)</label>
+                    <input
+                      id="txPaid"
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      style={{ paddingLeft: '16px' }}
+                      placeholder="0.00"
+                      value={txPaidAmount}
+                      onChange={(e) => setTxPaidAmount(e.target.value)}
+                      disabled={isModalSubmitting}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="txPaidCollected">Amount Collected (Rs.) *</label>
+                  <input
+                    id="txPaidCollected"
+                    type="number"
+                    step="0.01"
+                    className="form-input"
+                    style={{ paddingLeft: '16px' }}
+                    placeholder="0.00"
+                    value={txPaidAmount}
+                    onChange={(e) => setTxPaidAmount(e.target.value)}
+                    required
+                    disabled={isModalSubmitting}
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="txNoteVal">Remarks (Optional)</label>
+                <textarea
+                  id="txNoteVal"
+                  className="form-input"
+                  style={{ paddingLeft: '16px', height: '80px', resize: 'none' }}
+                  placeholder="Additional details..."
+                  value={txNote}
+                  onChange={(e) => setTxNote(e.target.value)}
+                  disabled={isModalSubmitting}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setCurrentTab('overview');
+                    setTxSuccessMsg(null);
+                    setTxErrorMsg(null);
+                  }} 
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  disabled={isModalSubmitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  disabled={isModalSubmitting}
+                >
+                  {isModalSubmitting ? 'Recording...' : 'Record Transaction'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </main>
 
       {/* -------------------- MODAL: ADD CUSTOMER -------------------- */}
@@ -659,7 +918,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                   {selectedCustomer.reference_name ? `Ref: ${selectedCustomer.reference_name}` : ''}
                 </p>
               </div>
-              <button onClick={() => setSelectedCustomer(null)} className="modal-close">
+              <button onClick={() => { setSelectedCustomer(null); setIsAddEntryOpen(false); }} className="modal-close">
                 <X size={22} />
               </button>
             </div>
@@ -686,150 +945,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
             </div>
 
-            {/* Layout grid: left form, right table */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.9fr', gap: '24px' }}>
-              
-              {/* Ledger Entry Form */}
-              <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '20px' }}>
-                <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>New Ledger Record</h4>
-                
-                {/* Form type toggler */}
-                <div style={{ display: 'flex', gap: '4px', padding: '3px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', marginBottom: '16px' }}>
-                  <button
-                    type="button"
-                    style={{ flex: 1, padding: '6px 12px', fontSize: '13px', justifyContent: 'center', margin: 0 }}
-                    onClick={() => { setLedgerType('purchase'); setLedgerItem(''); }}
-                    className={ledgerType === 'purchase' ? 'tab-btn active' : 'tab-btn'}
-                  >
-                    Sale (Iron/Sariya)
-                  </button>
-                  <button
-                    type="button"
-                    style={{ flex: 1, padding: '6px 12px', fontSize: '13px', justifyContent: 'center', margin: 0 }}
-                    onClick={() => { setLedgerType('payment'); setLedgerItem('Cash Received'); }}
-                    className={ledgerType === 'payment' ? 'tab-btn active' : 'tab-btn'}
-                  >
-                    Receive Cash
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddLedgerSubmit}>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="ledItem">
-                      {ledgerType === 'purchase' ? 'Item / Description' : 'Payment Mode'}
-                    </label>
-                    <input
-                      id="ledItem"
-                      type="text"
-                      className="form-input"
-                      style={{ paddingLeft: '16px' }}
-                      placeholder={ledgerType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
-                      value={ledgerItem}
-                      onChange={(e) => setLedgerItem(e.target.value)}
-                      required
-                      disabled={isModalSubmitting}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="ledDate">Transaction Date</label>
-                    <input
-                      id="ledDate"
-                      type="date"
-                      className="form-input"
-                      style={{ paddingLeft: '16px' }}
-                      value={ledgerDate}
-                      onChange={(e) => setLedgerDate(e.target.value)}
-                      required
-                      disabled={isModalSubmitting}
-                    />
-                  </div>
-
-                  {ledgerType === 'purchase' ? (
-                    <>
-                      <div className="form-group">
-                        <label className="form-label" htmlFor="ledTotal">Invoice Amount (Rs.)</label>
-                        <input
-                          id="ledTotal"
-                          type="number"
-                          step="0.01"
-                          className="form-input"
-                          style={{ paddingLeft: '16px' }}
-                          placeholder="0.00"
-                          value={ledgerTotalAmount}
-                          onChange={(e) => setLedgerTotalAmount(e.target.value)}
-                          required
-                          disabled={isModalSubmitting}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" htmlFor="ledPaid">Advance Paid (Optional)</label>
-                        <input
-                          id="ledPaid"
-                          type="number"
-                          step="0.01"
-                          className="form-input"
-                          style={{ paddingLeft: '16px' }}
-                          placeholder="0.00"
-                          value={ledgerPaidAmount}
-                          onChange={(e) => setLedgerPaidAmount(e.target.value)}
-                          disabled={isModalSubmitting}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="ledPaidVal">Amount Collected (Rs.)</label>
-                      <input
-                        id="ledPaidVal"
-                        type="number"
-                        step="0.01"
-                        className="form-input"
-                        style={{ paddingLeft: '16px' }}
-                        placeholder="0.00"
-                        value={ledgerPaidAmount}
-                        onChange={(e) => setLedgerPaidAmount(e.target.value)}
-                        required
-                        disabled={isModalSubmitting}
-                      />
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="ledNote">Note (Optional)</label>
-                    <textarea
-                      id="ledNote"
-                      className="form-input"
-                      style={{ paddingLeft: '16px', height: '60px', resize: 'none' }}
-                      placeholder="Remarks..."
-                      value={ledgerNote}
-                      onChange={(e) => setLedgerNote(e.target.value)}
-                      disabled={isModalSubmitting}
-                    />
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary" 
-                    style={{ width: '100%' }}
-                    disabled={isModalSubmitting}
-                  >
-                    {isModalSubmitting ? 'Submitting...' : 'Record Transaction'}
-                  </button>
-                </form>
+            {/* Full-width Layout for Purchase History */}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Purchase History</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerType('purchase');
+                    setLedgerItem('');
+                    setLedgerTotalAmount('');
+                    setLedgerPaidAmount('');
+                    setLedgerNote('');
+                    setIsAddEntryOpen(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '13px' }}
+                >
+                  <PlusCircle size={14} />
+                  Add Entry
+                </button>
               </div>
 
-              {/* Ledger Table */}
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '480px', overflowY: 'auto' }}>
-                <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>Ledger History</h4>
-                
+              <div style={{ overflowY: 'auto', maxHeight: '380px', minHeight: '200px', marginBottom: '16px' }}>
                 {customerLedger.length === 0 ? (
-                  <div className="dummy-placeholder" style={{ flex: 1, padding: '40px 10px' }}>
+                  <div className="dummy-placeholder" style={{ padding: '40px 10px' }}>
                     <BookOpen size={24} className="placeholder-icon" />
                     <p style={{ fontSize: '13px' }}>No transactions recorded for this customer.</p>
                   </div>
                 ) : (
-                  <div className="table-container" style={{ flex: 1 }}>
+                  <div className="table-container">
                     <table className="app-table" style={{ fontSize: '13px' }}>
                       <thead>
                         <tr>
@@ -870,20 +1015,170 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                     </table>
                   </div>
                 )}
-
-                <div style={{ borderTop: '1px solid var(--border-color)', marginTop: 'auto', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button 
-                    onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.customer_name)}
-                    className="btn btn-danger-outline"
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Trash2 size={14} />
-                    Delete Customer Profile
-                  </button>
-                </div>
               </div>
 
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.customer_name)}
+                  className="btn btn-danger-outline"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Trash2 size={14} />
+                  Delete Customer Profile
+                </button>
+              </div>
             </div>
+
+            {/* -------------------- SUB-MODAL: ADD ENTRY POPUP -------------------- */}
+            {isAddEntryOpen && (
+              <div className="modal-overlay" style={{ zIndex: 120 }}>
+                <div className="modal-container" style={{ maxWidth: '480px', padding: '24px' }}>
+                  <div className="modal-header">
+                    <h3 className="modal-title" style={{ fontSize: '18px' }}>Record Entry</h3>
+                    <button onClick={() => setIsAddEntryOpen(false)} className="modal-close">
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Form type toggler */}
+                  <div style={{ display: 'flex', gap: '4px', padding: '3px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', marginBottom: '16px' }}>
+                    <button
+                      type="button"
+                      style={{ flex: 1, padding: '6px 12px', fontSize: '13px', justifyContent: 'center', margin: 0 }}
+                      onClick={() => { setLedgerType('purchase'); setLedgerItem(''); }}
+                      className={ledgerType === 'purchase' ? 'tab-btn active' : 'tab-btn'}
+                    >
+                      Sale (Iron/Sariya)
+                    </button>
+                    <button
+                      type="button"
+                      style={{ flex: 1, padding: '6px 12px', fontSize: '13px', justifyContent: 'center', margin: 0 }}
+                      onClick={() => { setLedgerType('payment'); setLedgerItem('Cash Received'); }}
+                      className={ledgerType === 'payment' ? 'tab-btn active' : 'tab-btn'}
+                    >
+                      Receive Cash
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddLedgerSubmit}>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="ledItem">
+                        {ledgerType === 'purchase' ? 'Item / Description *' : 'Payment Mode *'}
+                      </label>
+                      <input
+                        id="ledItem"
+                        type="text"
+                        className="form-input"
+                        style={{ paddingLeft: '16px' }}
+                        placeholder={ledgerType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
+                        value={ledgerItem}
+                        onChange={(e) => setLedgerItem(e.target.value)}
+                        required
+                        disabled={isModalSubmitting}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="ledDate">Transaction Date *</label>
+                      <input
+                        id="ledDate"
+                        type="date"
+                        className="form-input"
+                        style={{ paddingLeft: '16px' }}
+                        value={ledgerDate}
+                        onChange={(e) => setLedgerDate(e.target.value)}
+                        required
+                        disabled={isModalSubmitting}
+                      />
+                    </div>
+
+                    {ledgerType === 'purchase' ? (
+                      <>
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="ledTotal">Invoice Amount (Rs.) *</label>
+                          <input
+                            id="ledTotal"
+                            type="number"
+                            step="0.01"
+                            className="form-input"
+                            style={{ paddingLeft: '16px' }}
+                            placeholder="0.00"
+                            value={ledgerTotalAmount}
+                            onChange={(e) => setLedgerTotalAmount(e.target.value)}
+                            required
+                            disabled={isModalSubmitting}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="ledPaid">Advance Paid (Optional)</label>
+                          <input
+                            id="ledPaid"
+                            type="number"
+                            step="0.01"
+                            className="form-input"
+                            style={{ paddingLeft: '16px' }}
+                            placeholder="0.00"
+                            value={ledgerPaidAmount}
+                            onChange={(e) => setLedgerPaidAmount(e.target.value)}
+                            disabled={isModalSubmitting}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="ledPaidVal">Amount Collected (Rs.) *</label>
+                        <input
+                          id="ledPaidVal"
+                          type="number"
+                          step="0.01"
+                          className="form-input"
+                          style={{ paddingLeft: '16px' }}
+                          placeholder="0.00"
+                          value={ledgerPaidAmount}
+                          onChange={(e) => setLedgerPaidAmount(e.target.value)}
+                          required
+                          disabled={isModalSubmitting}
+                        />
+                      </div>
+                    )}
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="ledNote">Remarks / Notes (Optional)</label>
+                      <textarea
+                        id="ledNote"
+                        className="form-input"
+                        style={{ paddingLeft: '16px', height: '60px', resize: 'none' }}
+                        placeholder="Additional remarks..."
+                        value={ledgerNote}
+                        onChange={(e) => setLedgerNote(e.target.value)}
+                        disabled={isModalSubmitting}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => setIsAddEntryOpen(false)} 
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
+                        disabled={isModalSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary"
+                        style={{ flex: 1 }}
+                        disabled={isModalSubmitting}
+                      >
+                        {isModalSubmitting ? 'Submitting...' : 'Record Entry'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

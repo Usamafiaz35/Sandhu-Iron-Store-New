@@ -82,11 +82,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Project specific
-Frontend/node_modules/
-Frontend/.next/
-Frontend/out/
-Frontend/build/
 
 # Uploads / Media
 uploads/

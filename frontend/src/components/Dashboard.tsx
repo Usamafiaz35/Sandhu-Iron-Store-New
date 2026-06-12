@@ -656,7 +656,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                 onClick={() => { setTxType('purchase'); setTxItem(''); setTxSuccessMsg(null); setTxErrorMsg(null); }}
                 className={txType === 'purchase' ? 'tab-btn active' : 'tab-btn'}
               >
-                Sale (Iron/Sariya)
+                Sale Entry
               </button>
               <button
                 type="button"
@@ -669,6 +669,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             </div>
 
             <form onSubmit={handleNewTransactionSubmit}>
+              {/* 1. Select Customer */}
               <div className="form-group">
                 <label className="form-label" htmlFor="txCustomerSelect">Select Customer *</label>
                 <select
@@ -689,23 +690,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="txItemVal">
-                  {txType === 'purchase' ? 'Item / Description *' : 'Payment Mode *'}
-                </label>
-                <input
-                  id="txItemVal"
-                  type="text"
-                  className="form-input"
-                  style={{ paddingLeft: '16px' }}
-                  placeholder={txType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
-                  value={txItem}
-                  onChange={(e) => setTxItem(e.target.value)}
-                  required
-                  disabled={isModalSubmitting}
-                />
-              </div>
-
+              {/* 2. Transaction Date */}
               <div className="form-group">
                 <label className="form-label" htmlFor="txDateVal">Transaction Date *</label>
                 <input
@@ -720,10 +705,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                 />
               </div>
 
+              {/* 3. Purchase item */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="txItemVal">
+                  {txType === 'purchase' ? 'Purchase item *' : 'Payment Mode *'}
+                </label>
+                <input
+                  id="txItemVal"
+                  type="text"
+                  className="form-input"
+                  style={{ paddingLeft: '16px' }}
+                  placeholder={txType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
+                  value={txItem}
+                  onChange={(e) => setTxItem(e.target.value)}
+                  required
+                  disabled={isModalSubmitting}
+                />
+              </div>
+
+              {/* 4. Detail of purchase item (optional) */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="txNoteVal">
+                  {txType === 'purchase' ? 'Detail of purchase item (optional)' : 'Remarks (Optional)'}
+                </label>
+                <textarea
+                  id="txNoteVal"
+                  className="form-input"
+                  style={{ paddingLeft: '16px', height: '80px', resize: 'none' }}
+                  placeholder="Additional details..."
+                  value={txNote}
+                  onChange={(e) => setTxNote(e.target.value)}
+                  disabled={isModalSubmitting}
+                />
+              </div>
+
+              {/* 5 & 6. Total Amount & Paid Amount (optional) */}
               {txType === 'purchase' ? (
                 <>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="txTotal">Invoice Amount (Rs.) *</label>
+                    <label className="form-label" htmlFor="txTotal">Total Amount *</label>
                     <input
                       id="txTotal"
                       type="number"
@@ -738,7 +758,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="txPaid">Advance Paid (Optional)</label>
+                    <label className="form-label" htmlFor="txPaid">Paid Amount (optional)</label>
                     <input
                       id="txPaid"
                       type="number"
@@ -769,19 +789,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                   />
                 </div>
               )}
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="txNoteVal">Remarks (Optional)</label>
-                <textarea
-                  id="txNoteVal"
-                  className="form-input"
-                  style={{ paddingLeft: '16px', height: '80px', resize: 'none' }}
-                  placeholder="Additional details..."
-                  value={txNote}
-                  onChange={(e) => setTxNote(e.target.value)}
-                  disabled={isModalSubmitting}
-                />
-              </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                 <button 
@@ -1061,7 +1068,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                       onClick={() => { setLedgerType('purchase'); setLedgerItem(''); }}
                       className={ledgerType === 'purchase' ? 'tab-btn active' : 'tab-btn'}
                     >
-                      Sale (Iron/Sariya)
+                      Sale Entry
                     </button>
                     <button
                       type="button"
@@ -1074,23 +1081,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                   </div>
 
                   <form onSubmit={handleAddLedgerSubmit}>
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="ledItem">
-                        {ledgerType === 'purchase' ? 'Item / Description *' : 'Payment Mode *'}
-                      </label>
-                      <input
-                        id="ledItem"
-                        type="text"
-                        className="form-input"
-                        style={{ paddingLeft: '16px' }}
-                        placeholder={ledgerType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
-                        value={ledgerItem}
-                        onChange={(e) => setLedgerItem(e.target.value)}
-                        required
-                        disabled={isModalSubmitting}
-                      />
-                    </div>
-
+                    {/* 1. Transaction Date */}
                     <div className="form-group">
                       <label className="form-label" htmlFor="ledDate">Transaction Date *</label>
                       <input
@@ -1105,10 +1096,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                       />
                     </div>
 
+                    {/* 2. Purchase item / Payment Mode */}
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="ledItem">
+                        {ledgerType === 'purchase' ? 'Purchase item *' : 'Payment Mode *'}
+                      </label>
+                      <input
+                        id="ledItem"
+                        type="text"
+                        className="form-input"
+                        style={{ paddingLeft: '16px' }}
+                        placeholder={ledgerType === 'purchase' ? "e.g. Sariya 40 Grade 12mm" : "e.g. Cash / Bank Transfer"}
+                        value={ledgerItem}
+                        onChange={(e) => setLedgerItem(e.target.value)}
+                        required
+                        disabled={isModalSubmitting}
+                      />
+                    </div>
+
+                    {/* 3. Detail of purchase item (optional) / Remarks / Notes (Optional) */}
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="ledNote">
+                        {ledgerType === 'purchase' ? 'Detail of purchase item (optional)' : 'Remarks / Notes (Optional)'}
+                      </label>
+                      <textarea
+                        id="ledNote"
+                        className="form-input"
+                        style={{ paddingLeft: '16px', height: '60px', resize: 'none' }}
+                        placeholder="Additional remarks..."
+                        value={ledgerNote}
+                        onChange={(e) => setLedgerNote(e.target.value)}
+                        disabled={isModalSubmitting}
+                      />
+                    </div>
+
+                    {/* 4. Total Amount & Paid Amount */}
                     {ledgerType === 'purchase' ? (
                       <>
                         <div className="form-group">
-                          <label className="form-label" htmlFor="ledTotal">Invoice Amount (Rs.) *</label>
+                          <label className="form-label" htmlFor="ledTotal">Total Amount *</label>
                           <input
                             id="ledTotal"
                             type="number"
@@ -1123,7 +1149,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                           />
                         </div>
                         <div className="form-group">
-                          <label className="form-label" htmlFor="ledPaid">Advance Paid (Optional)</label>
+                          <label className="form-label" htmlFor="ledPaid">Paid Amount (optional)</label>
                           <input
                             id="ledPaid"
                             type="number"
@@ -1154,19 +1180,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                         />
                       </div>
                     )}
-
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="ledNote">Remarks / Notes (Optional)</label>
-                      <textarea
-                        id="ledNote"
-                        className="form-input"
-                        style={{ paddingLeft: '16px', height: '60px', resize: 'none' }}
-                        placeholder="Additional remarks..."
-                        value={ledgerNote}
-                        onChange={(e) => setLedgerNote(e.target.value)}
-                        disabled={isModalSubmitting}
-                      />
-                    </div>
 
                     <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                       <button 

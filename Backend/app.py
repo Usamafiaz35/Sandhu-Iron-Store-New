@@ -8,7 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from Database.queries import *
 from Database.schema import *
-
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash
 from Database.db import get_db_connection
@@ -18,6 +18,15 @@ from psycopg2.extras import RealDictCursor
 app = FastAPI(title="Sindhu Iron Store API",
              description="Iron Store Management System",
              version="1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Security
 security = HTTPBearer()

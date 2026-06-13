@@ -36,6 +36,9 @@
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Background image overlay (light theme) */
+  --bg-image-overlay: rgba(248, 250, 252, 0.78);
 }
 
 /* Dark mode overrides (respecting system theme) */
@@ -59,6 +62,8 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+
+    --bg-image-overlay: rgba(11, 15, 25, 0.78);
   }
 }
 
@@ -73,10 +78,35 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);
+  position: relative;
+  isolation: isolate;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: url('/img.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--bg-image-overlay);
+  pointer-events: none;
+  transition: background-color var(--transition-normal);
 }
 
 #root {
@@ -369,10 +399,11 @@ body {
 /* Dashboard Styles */
 .dashboard-wrapper {
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  background-color: transparent;
   position: relative;
 }
 

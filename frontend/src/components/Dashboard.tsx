@@ -232,6 +232,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
       const data = await response.json();
       if (data.success) {
+        const newCustomerId = data.customer_id;
         // Reset and close
         setNewCustomerName('');
         setNewCustomerPhone('');
@@ -240,6 +241,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         setIsAddCustomerOpen(false);
         // Refresh
         await loadData();
+        if (currentTab === 'transaction' && newCustomerId) {
+          setTxCustomerId(String(newCustomerId));
+        }
       } else {
         alert(data.message || 'Failed to add customer');
       }
@@ -809,7 +813,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
             <form onSubmit={handleNewTransactionSubmit}>
               {/* 1. Select Customer */}
               <div className="form-group">
-                <label className="form-label" htmlFor="txCustomerSelect">Select Customer *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '12px', flexWrap: 'wrap' }}>
+                  <label className="form-label" htmlFor="txCustomerSelect" style={{ marginBottom: 0 }}>Select Customer *</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddCustomerOpen(true)}
+                    className="btn btn-primary"
+                    style={{ padding: '8px 14px', fontSize: '13px' }}
+                    disabled={isModalSubmitting}
+                  >
+                    <UserPlus size={15} />
+                    Add New Customer
+                  </button>
+                </div>
                 <select
                   id="txCustomerSelect"
                   className="form-input"

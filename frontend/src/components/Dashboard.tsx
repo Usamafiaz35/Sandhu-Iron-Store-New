@@ -1,15 +1,16 @@
+import { apiUrl } from '../api';
 import React, { useState, useEffect } from 'react';
-import { 
-  LogOut, 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  DollarSign, 
-  Search, 
-  X, 
-  Trash2, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
+import {
+  LogOut,
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  DollarSign,
+  Search,
+  X,
+  Trash2,
+  ArrowUpRight,
+  ArrowDownLeft,
   UserPlus,
   PlusCircle
 } from 'lucide-react';
@@ -74,17 +75,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Year and Month filter states
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
-  
+
   const availableYears = summary?.available_years && summary.available_years.length > 0
     ? summary.available_years
     : [new Date().getFullYear()];
-  
+
   const isFiltered = !!(selectedYear && selectedMonth);
-  
+
   const getPeriodLabel = () => {
     if (selectedYear && selectedMonth) {
       const mObj = MONTHS.find(m => m.value === selectedMonth);
@@ -99,28 +100,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     }
     return 'Overall';
   };
-  
+
   const periodLabel = getPeriodLabel();
-  
+
   // Modals state
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerLedger, setCustomerLedger] = useState<Transaction[]>([]);
   const [isAddEntryOpen, setIsAddEntryOpen] = useState(false);
-  
+
   // Form States
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [newCustomerReference, setNewCustomerReference] = useState('');
-  
+
   const [ledgerType, setLedgerType] = useState<'purchase' | 'payment'>('purchase');
   const [ledgerItem, setLedgerItem] = useState('');
   const [ledgerTotalAmount, setLedgerTotalAmount] = useState('');
   const [ledgerPaidAmount, setLedgerPaidAmount] = useState('');
   const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
   const [ledgerNote, setLedgerNote] = useState('');
-  
+
   // New Transaction Form States
   const [txCustomerId, setTxCustomerId] = useState('');
   const [txType, setTxType] = useState<'purchase' | 'payment'>('purchase');
@@ -131,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [txNote, setTxNote] = useState('');
   const [txSuccessMsg, setTxSuccessMsg] = useState<string | null>(null);
   const [txErrorMsg, setTxErrorMsg] = useState<string | null>(null);
-  
+
   // Loading & Error States
   const [isLoading, setIsLoading] = useState(true);
   const [isLedgerLoading, setIsLedgerLoading] = useState(false);
@@ -142,7 +143,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const fetchSummary = async (year?: string, month?: string) => {
     try {
       const token = localStorage.getItem('token');
-      let url = '/api/dashboard';
+      let url = apiUrl('/dashboard');
       const queryParams: string[] = [];
       if (year) queryParams.push(`year=${year}`);
       if (month) queryParams.push(`month=${month}`);
@@ -167,7 +168,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/customers-with-balance', {
+      const response = await fetch(apiUrl('/customers-with-balance'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Failed to fetch customers list');
@@ -201,7 +202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   }, [selectedYear, selectedMonth]);
 
   // Filter customers by search query
-  const filteredCustomers = customers.filter(c => 
+  const filteredCustomers = customers.filter(c =>
     c.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.phone_number && c.phone_number.includes(searchQuery)) ||
     (c.reference_name && c.reference_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -215,9 +216,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     setIsModalSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/customers', {
+      const response = await fetch(apiUrl('/customers'), {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -256,7 +257,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     setIsLedgerLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/ledger/${customer.id}`, {
+      const response = await fetch(apiUrl(`/ledger/${customer.id}`), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -276,16 +277,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
     if (!selectedCustomer || !ledgerItem) return;
 
     setIsModalSubmitting(true);
-    
+
     // Format amounts
     const totalAmount = ledgerType === 'purchase' ? parseFloat(ledgerTotalAmount || '0') : 0;
-    const paidAmount = ledgerType === 'payment' 
-      ? parseFloat(ledgerPaidAmount || '0') 
+    const paidAmount = ledgerType === 'payment'
+      ? parseFloat(ledgerPaidAmount || '0')
       : parseFloat(ledgerPaidAmount || '0'); // Allow cash downpayment on purchase
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/ledger', {
+      const response = await fetch(apiUrl('/ledger'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -308,9 +309,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         setLedgerTotalAmount('');
         setLedgerPaidAmount('');
         setLedgerNote('');
-        
+
         setIsAddEntryOpen(false); // Close the entry sub-modal
-        
+
         // Refresh Ledger history and Summary info
         await handleOpenLedger(selectedCustomer);
         const updatedCustomers = await fetchCustomers();
@@ -373,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         setTxPaidAmount('');
         setTxNote('');
         setTxSuccessMsg('Transaction recorded successfully!');
-        
+
         // Refresh global dashboard data
         await loadData();
       } else {
@@ -389,10 +390,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   // Handle deleting a ledger entry
   const handleDeleteLedgerEntry = async (ledgerId: number) => {
     if (!confirm('Are you sure you want to delete this transaction record?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/ledger/${ledgerId}`, {
+      const response = await fetch(apiUrl(`/ledger/${ledgerId}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -423,7 +424,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/customers/${customerId}`, {
+      const response = await fetch(apiUrl(`/customers/${customerId}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -495,21 +496,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
         {/* Navigation Tabs */}
         <div className="tabs-container">
-          <button 
+          <button
             className={`tab-btn ${currentTab === 'overview' ? 'active' : ''}`}
             onClick={() => { setCurrentTab('overview'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
           >
             <LayoutDashboard size={16} />
             Overview
           </button>
-          <button 
+          <button
             className={`tab-btn ${currentTab === 'customers' ? 'active' : ''}`}
             onClick={() => { setCurrentTab('customers'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
           >
             <Users size={16} />
             Customers
           </button>
-          <button 
+          <button
             className={`tab-btn ${currentTab === 'transaction' ? 'active' : ''}`}
             onClick={() => { setCurrentTab('transaction'); setTxSuccessMsg(null); setTxErrorMsg(null); }}
           >
@@ -571,7 +572,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                 </select>
               </div>
               {(selectedYear || selectedMonth) && (
-                <button 
+                <button
                   onClick={() => { setSelectedYear(''); setSelectedMonth(''); }}
                   className="btn btn-secondary"
                   style={{ padding: '8px 16px', fontSize: '13px', height: '38px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -621,9 +622,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                   <span className="stat-label">{isFiltered ? `Period Net Balance` : "Pending Balance"}</span>
                   <div className="stat-icon"><DollarSign size={20} /></div>
                 </div>
-                <div className="stat-value" style={{ 
-                  fontSize: '24px', 
-                  color: summary.total_pending > 0 ? 'var(--error)' : summary.total_pending < 0 ? 'var(--success)' : 'var(--text-primary)' 
+                <div className="stat-value" style={{
+                  fontSize: '24px',
+                  color: summary.total_pending > 0 ? 'var(--error)' : summary.total_pending < 0 ? 'var(--success)' : 'var(--text-primary)'
                 }}>
                   {formatRs(summary.total_pending)}
                 </div>
@@ -928,21 +929,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               )}
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => {
                     setCurrentTab('overview');
                     setTxSuccessMsg(null);
                     setTxErrorMsg(null);
-                  }} 
+                  }}
                   className="btn btn-secondary"
                   style={{ flex: 1 }}
                   disabled={isModalSubmitting}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn btn-primary"
                   style={{ flex: 1 }}
                   disabled={isModalSubmitting}
@@ -1026,17 +1027,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsAddCustomerOpen(false)} 
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomerOpen(false)}
                   className="btn btn-secondary"
                   style={{ flex: 1 }}
                   disabled={isModalSubmitting}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn btn-primary"
                   style={{ flex: 1 }}
                   disabled={isModalSubmitting}
@@ -1152,16 +1153,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                               <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--success)' }}>
                                 {item.paid_amount > 0 ? formatRs(item.paid_amount) : '-'}
                               </td>
-                              <td style={{ 
-                                textAlign: 'right', 
-                                fontFamily: 'monospace', 
+                              <td style={{
+                                textAlign: 'right',
+                                fontFamily: 'monospace',
                                 fontWeight: 600,
-                                color: remaining > 0 ? 'var(--error)' : 'var(--success)' 
+                                color: remaining > 0 ? 'var(--error)' : 'var(--success)'
                               }}>
                                 {formatRs(remaining)}
                               </td>
                               <td>
-                                <button 
+                                <button
                                   onClick={() => handleDeleteLedgerEntry(item.id)}
                                   className="password-toggle"
                                   style={{ position: 'relative', right: 0, top: 0, transform: 'none' }}
@@ -1180,7 +1181,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
 
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button 
+                <button
                   onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.customer_name)}
                   className="btn btn-danger-outline"
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -1324,17 +1325,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
                     )}
 
                     <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                      <button 
-                        type="button" 
-                        onClick={() => setIsAddEntryOpen(false)} 
+                      <button
+                        type="button"
+                        onClick={() => setIsAddEntryOpen(false)}
                         className="btn btn-secondary"
                         style={{ flex: 1 }}
                         disabled={isModalSubmitting}
                       >
                         Cancel
                       </button>
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         className="btn btn-primary"
                         style={{ flex: 1 }}
                         disabled={isModalSubmitting}

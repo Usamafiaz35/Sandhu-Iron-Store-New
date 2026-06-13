@@ -134,6 +134,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   
   // Loading & Error States
   const [isLoading, setIsLoading] = useState(true);
+  const [isLedgerLoading, setIsLedgerLoading] = useState(false);
   const [isModalSubmitting, setIsModalSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,10 +174,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       const data = await response.json();
       if (data.success) {
         setCustomers(data.data);
+        return data.data;
       }
     } catch (err: any) {
       console.error(err);
     }
+    return null;
   };
 
   const loadData = async () => {
@@ -249,6 +252,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   // Handle opening a customer's ledger
   const handleOpenLedger = async (customer: Customer) => {
     setSelectedCustomer(customer);
+    setCustomerLedger([]);
+    setIsLedgerLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`/api/ledger/${customer.id}`, {
@@ -260,6 +265,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       }
     } catch (err) {
       console.error('Error fetching ledger details:', err);
+    } finally {
+      setIsLedgerLoading(false);
     }
   };
 
@@ -306,7 +313,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         
         // Refresh Ledger history and Summary info
         await handleOpenLedger(selectedCustomer);
-        await loadData();
+        const updatedCustomers = await fetchCustomers();
+        if (updatedCustomers) {
+          const updatedCust = updatedCustomers.find((c: Customer) => c.id === selectedCustomer.id);
+          if (updatedCust) {
+            setSelectedCustomer(updatedCust);
+          }
+        }
+        await fetchSummary(selectedYear, selectedMonth);
       } else {
         alert(data.message || 'Failed to submit entry');
       }
@@ -386,8 +400,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
       if (data.success) {
         if (selectedCustomer) {
           await handleOpenLedger(selectedCustomer);
+          const updatedCustomers = await fetchCustomers();
+          if (updatedCustomers) {
+            const updatedCust = updatedCustomers.find((c: Customer) => c.id === selectedCustomer.id);
+            if (updatedCust) {
+              setSelectedCustomer(updatedCust);
+            }
+          }
         }
-        await loadData();
+        await fetchSummary(selectedYear, selectedMonth);
       } else {
         alert(data.message || 'Failed to delete record');
       }
@@ -1091,7 +1112,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
               </div>
 
               <div style={{ overflowY: 'auto', maxHeight: '380px', minHeight: '200px', marginBottom: '16px' }}>
-                {customerLedger.length === 0 ? (
+                {isLedgerLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+                    <span className="spinner" style={{ borderColor: 'var(--border-color)', borderTopColor: 'var(--primary)', width: '32px', height: '32px' }}></span>
+                    <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>Loading transactions...</p>
+                  </div>
+                ) : customerLedger.length === 0 ? (
                   <div className="dummy-placeholder" style={{ padding: '40px 10px' }}>
                     <BookOpen size={24} className="placeholder-icon" />
                     <p style={{ fontSize: '13px' }}>No transactions recorded for this customer.</p>

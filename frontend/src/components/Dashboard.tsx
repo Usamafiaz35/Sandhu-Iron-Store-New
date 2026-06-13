@@ -46,7 +46,23 @@ interface DashboardSummary {
   total_pending: number;
   recent_customers: Customer[];
   recent_transactions: Transaction[];
+  available_years?: number[];
 }
+
+const MONTHS = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+];
 
 interface DashboardProps {
   username: string;
@@ -58,6 +74,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Year and Month filter states
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  
+  const availableYears = summary?.available_years && summary.available_years.length > 0
+    ? summary.available_years
+    : [new Date().getFullYear()];
+  
+  const isFiltered = !!(selectedYear && selectedMonth);
+  
+  const getPeriodLabel = () => {
+    if (selectedYear && selectedMonth) {
+      const mObj = MONTHS.find(m => m.value === selectedMonth);
+      return `${mObj?.label} ${selectedYear}`;
+    }
+    if (selectedYear) {
+      return `Year ${selectedYear}`;
+    }
+    if (selectedMonth) {
+      const mObj = MONTHS.find(m => m.value === selectedMonth);
+      return `${mObj?.label}`;
+    }
+    return 'Overall';
+  };
+  
+  const periodLabel = getPeriodLabel();
   
   // Modals state
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
@@ -95,10 +138,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch initial summary data
-  const fetchSummary = async () => {
+  const fetchSummary = async (year?: string, month?: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/dashboard', {
+      let url = '/api/dashboard';
+      const queryParams: string[] = [];
+      if (year) queryParams.push(`year=${year}`);
+      if (month) queryParams.push(`month=${month}`);
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
+      }
+
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Failed to load dashboard data');
@@ -131,13 +182,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
-    await Promise.all([fetchSummary(), fetchCustomers()]);
+    await Promise.all([fetchSummary(selectedYear, selectedMonth), fetchCustomers()]);
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    // Only fetch summary when summary has already been loaded initially and filters change
+    if (summary !== null) {
+      fetchSummary(selectedYear, selectedMonth);
+    }
+  }, [selectedYear, selectedMonth]);
 
   // Filter customers by search query
   const filteredCustomers = customers.filter(c => 
@@ -448,6 +506,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
         {/* -------------------- OVERVIEW TAB -------------------- */}
         {currentTab === 'overview' && summary && (
           <>
+            {/* Period Filter Bar */}
+            <div className="filter-bar" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px 24px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '24px',
+              gap: '16px',
+              flexWrap: 'wrap',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>
+                  Filter by Period:
+                </div>
+                {/* Year Dropdown */}
+                <select
+                  className="form-input"
+                  style={{ width: '130px', padding: '8px 12px', paddingLeft: '12px', fontSize: '14px', margin: 0, height: '38px' }}
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  <option value="">All Years</option>
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr.toString()}>{yr}</option>
+                  ))}
+                </select>
+                {/* Month Dropdown */}
+                <select
+                  className="form-input"
+                  style={{ width: '140px', padding: '8px 12px', paddingLeft: '12px', fontSize: '14px', margin: 0, height: '38px' }}
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  <option value="">All Months</option>
+                  {MONTHS.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              {(selectedYear || selectedMonth) && (
+                <button 
+                  onClick={() => { setSelectedYear(''); setSelectedMonth(''); }}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px', fontSize: '13px', height: '38px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <X size={14} />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
             <section className="stats-grid">
               <div className="stat-card">
                 <div className="stat-header">
@@ -462,36 +575,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
               <div className="stat-card">
                 <div className="stat-header">
-                  <span className="stat-label">Total Sales</span>
+                  <span className="stat-label">{isFiltered ? `Sales (${periodLabel})` : "Total Sales"}</span>
                   <div className="stat-icon"><ArrowUpRight size={20} /></div>
                 </div>
                 <div className="stat-value" style={{ fontSize: '24px' }}>{formatRs(summary.total_sales)}</div>
                 <div className="stat-label" style={{ color: 'var(--primary)', fontSize: '13px', fontWeight: 500 }}>
-                  Overall invoice volume
+                  {isFiltered ? "Period sales volume" : "Overall invoice volume"}
                 </div>
               </div>
 
               <div className="stat-card">
                 <div className="stat-header">
-                  <span className="stat-label">Payments Received</span>
+                  <span className="stat-label">{isFiltered ? `Payments (${periodLabel})` : "Payments Received"}</span>
                   <div className="stat-icon"><ArrowDownLeft size={20} /></div>
                 </div>
                 <div className="stat-value" style={{ fontSize: '24px' }}>{formatRs(summary.total_payments)}</div>
                 <div className="stat-label" style={{ color: 'var(--success)', fontSize: '13px', fontWeight: 500 }}>
-                  Cash collected
+                  {isFiltered ? "Period cash collected" : "Cash collected"}
                 </div>
               </div>
 
               <div className="stat-card">
                 <div className="stat-header">
-                  <span className="stat-label">Pending Balance</span>
+                  <span className="stat-label">{isFiltered ? `Period Net Balance` : "Pending Balance"}</span>
                   <div className="stat-icon"><DollarSign size={20} /></div>
                 </div>
-                <div className="stat-value" style={{ fontSize: '24px', color: summary.total_pending > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
+                <div className="stat-value" style={{ 
+                  fontSize: '24px', 
+                  color: summary.total_pending > 0 ? 'var(--error)' : summary.total_pending < 0 ? 'var(--success)' : 'var(--text-primary)' 
+                }}>
                   {formatRs(summary.total_pending)}
                 </div>
                 <div className="stat-label" style={{ fontSize: '13px', fontWeight: 500 }}>
-                  Receivables
+                  {isFiltered ? "Sales minus payments" : "Receivables"}
                 </div>
               </div>
             </section>

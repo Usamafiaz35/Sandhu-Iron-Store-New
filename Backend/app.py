@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import jwt
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -225,9 +226,9 @@ def delete_ledger_entry_endpoint(ledger_id: int):
 # ==================== DASHBOARD ENDPOINTS ====================
 
 @app.get("/dashboard")
-def get_dashboard_summary_endpoint():
-    """Get complete dashboard summary"""
-    summary = get_dashboard_summary()
+def get_dashboard_summary_endpoint(year: Optional[int] = None, month: Optional[int] = None):
+    """Get complete dashboard summary with optional year and month filters"""
+    summary = get_dashboard_summary(year, month)
     return {"success": True, "data": summary}
 
 # ==================== HEALTH CHECK ====================

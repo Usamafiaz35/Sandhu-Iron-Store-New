@@ -64,41 +64,66 @@ def get_customer_balance(customer_id):
     return {"customer_id": customer_id, "total_purchases": 0, "total_paid": 0, "balance": 0}
 
 # 5. Get dashboard summary
-def get_dashboard_summary():
+def get_dashboard_summary(year=None, month=None):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Total customers
+    # Total customers (always overall count)
     cursor.execute("SELECT COUNT(*) as total FROM customers")
     total_customers = cursor.fetchone()['total']
     
-    # Total sales (all purchases)
-    cursor.execute("SELECT SUM(total_amount) as total_sales FROM customer_ledger")
+    # Build dynamic filter conditions for customer_ledger
+    ledger_conditions = []
+    params = []
+    if year is not None:
+        ledger_conditions.append("EXTRACT(YEAR FROM purchase_date) = %s")
+        params.append(year)
+    if month is not None:
+        ledger_conditions.append("EXTRACT(MONTH FROM purchase_date) = %s")
+        params.append(month)
+        
+    where_clause = ""
+    if ledger_conditions:
+        where_clause = "WHERE " + " AND ".join(ledger_conditions)
+        
+    # Total sales (all purchases or filtered)
+    cursor.execute(f"SELECT SUM(total_amount) as total_sales FROM customer_ledger {where_clause}", params)
     total_sales = cursor.fetchone()['total_sales'] or 0
     
-    # Total payments received
-    cursor.execute("SELECT SUM(paid_amount) as total_payments FROM customer_ledger")
+    # Total payments received (or filtered)
+    cursor.execute(f"SELECT SUM(paid_amount) as total_payments FROM customer_ledger {where_clause}", params)
     total_payments = cursor.fetchone()['total_payments'] or 0
     
-    # Total pending balance
-    cursor.execute("""
-        SELECT SUM(total_amount - paid_amount) as total_pending 
-        FROM customer_ledger
-    """)
+    # Total pending balance (or filtered)
+    cursor.execute(f"SELECT SUM(total_amount - paid_amount) as total_pending FROM customer_ledger {where_clause}", params)
     total_pending = cursor.fetchone()['total_pending'] or 0
     
-    # Recent customers (last 5)
+    # Recent customers (always overall last 5)
     cursor.execute("SELECT * FROM customers ORDER BY created_at DESC LIMIT 5")
     recent_customers = cursor.fetchall()
     
-    # Recent transactions (last 5)
-    cursor.execute("""
-        SELECT cl.*, c.customer_name 
-        FROM customer_ledger cl
-        JOIN customers c ON cl.customer_id = c.id
-        ORDER BY cl.created_at DESC LIMIT 5
-    """)
+    # Recent transactions (filtered by period if applicable)
+    if ledger_conditions:
+        tx_query = f"""
+            SELECT cl.*, c.customer_name 
+            FROM customer_ledger cl
+            JOIN customers c ON cl.customer_id = c.id
+            {where_clause}
+            ORDER BY cl.purchase_date DESC, cl.created_at DESC LIMIT 5
+        """
+        cursor.execute(tx_query, params)
+    else:
+        cursor.execute("""
+            SELECT cl.*, c.customer_name 
+            FROM customer_ledger cl
+            JOIN customers c ON cl.customer_id = c.id
+            ORDER BY cl.created_at DESC LIMIT 5
+        """)
     recent_transactions = cursor.fetchall()
+    
+    # Available years for filtering
+    cursor.execute("SELECT DISTINCT EXTRACT(YEAR FROM purchase_date)::int as yr FROM customer_ledger ORDER BY yr DESC")
+    available_years = [r['yr'] for r in cursor.fetchall() if r['yr'] is not None]
     
     cursor.close()
     conn.close()
@@ -109,7 +134,8 @@ def get_dashboard_summary():
         "total_payments": float(total_payments),
         "total_pending": float(total_pending),
         "recent_customers": recent_customers,
-        "recent_transactions": recent_transactions
+        "recent_transactions": recent_transactions,
+        "available_years": available_years
     }
 
 # 6. Add new ledger entry

@@ -349,7 +349,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ username, onLogout }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/ledger', {
+      const response = await fetch(apiUrl('/ledger'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
